@@ -3,6 +3,10 @@ import time
 import os
 import subprocess
 import configparser
+import urllib3
+import platform
+
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 if os.name == 'nt':
     os.system('')
@@ -26,11 +30,11 @@ def print_banner():
     banner = f"""{GREEN}
     ╔═════════════════════════════════════════════════════╗
     ║                                                     ║
-    ║   ____  ____  ____  __        _____ _____ ___       ║
-    ║  / ___|/ ___|| __ ) \ \      / /_ _|  ___|_ _|      ║
-    ║ | |  _ \___ \|  _ \  \ \ /\ / / | || |_   | |       ║
-    ║ | |_| | ___) | |_) |  \ V  V /  | ||  _|  | |       ║
-    ║  \____||____/|____/    \_/\_/  |___|_|   |___|      ║
+    ║    ____  ____  ____  __        _____ _____ ___      ║
+    ║   / ___|/ ___|| __ ) \ \      / /_ _|  ___|_ _|     ║
+    ║  | |  _ \___ \|  _ \  \ \ /\ / / | || |_   | |      ║
+    ║  | |_| | ___) | |_) |  \ V  V /  | ||  _|  | |      ║
+    ║   \____||____/|____/    \_/\_/  |___|_|   |___|     ║
     ║                                                     ║
     ║         [ GSBWIFI Auto-Auth & Bypass Tool ]         ║
     ║         [ Credit: @denizegemenemare       ]         ║
@@ -82,7 +86,7 @@ def aggressive_login(tc, sifre):
         while True:
             attempts += 1
             try:
-                response = session.post(LOGIN_URL, data=payload, headers=HEADERS, timeout=2, allow_redirects=False)
+                response = session.post(LOGIN_URL, data=payload, headers=HEADERS, timeout=2, allow_redirects=False, verify=False)
                 
                 if response.status_code == 302 and 'Location' in response.headers:
                     print(f"\n[+] BOOM! {attempts}. denemede içeri girildi! İnternet aktif.")
@@ -111,6 +115,46 @@ def check_warp_installed():
         return False
     return False
 
+def install_warp():
+    os_name = platform.system()
+    
+    if os_name == "Windows":
+        print("\n[*] Windows tespit edildi. Winget ile WARP kuruluyor. Lütfen bekle...")
+        os.system("winget install -e --id Cloudflare.Warp")
+        print("\n[+] Kurulum tamamlandı! Lütfen uygulamanın ilk ayarlarını yap.")
+        
+    elif os_name == "Linux":
+        try:
+            with open("/etc/os-release") as f:
+                os_info = f.read().lower()
+                
+            if "cachyos" in os_info or "arch" in os_info:
+                print("\n[*] Arch/CachyOS tabanlı sistem tespit edildi. 'yay' ile kuruluyor...")
+                os.system("yay -S cloudflare-warp-bin --noconfirm")
+                print("\n[+] Kurulum tamamlandı. Servisi başlatmak gerekebilir: sudo systemctl enable --now warp-svc")
+                
+            elif "debian" in os_info or "ubuntu" in os_info:
+                print("\n[*] Debian/Ubuntu tabanlı sistem tespit edildi. APT ile kuruluyor...")
+                print("[!] Not: Cloudflare GPG anahtarı ve deposunun sisteme daha önceden eklenmiş olduğu varsayılmaktadır.")
+                os.system("sudo apt update && sudo apt install cloudflare-warp -y")
+                
+            elif "fedora" in os_info:
+                print("\n[*] Fedora tespit edildi. DNF ile kuruluyor...")
+                os.system("sudo dnf install cloudflare-warp -y")
+                
+            else:
+                print("\n[-] Desteklenmeyen veya tanımlanamayan Linux dağıtımı. Lütfen warp-cli paketini manuel kurun.")
+                
+        except FileNotFoundError:
+            print("\n[-] '/etc/os-release' dosyası okunamadı. Lütfen WARP'ı manuel kurun.")
+            
+    elif os_name == "Darwin":
+        print("\n[*] macOS tespit edildi. Homebrew ile kuruluyor...")
+        os.system("brew install --cask cloudflare-warp")
+        
+    else:
+        print(f"\n[-] {os_name} işletim sistemi için otomatik kurulum desteklenmiyor.")
+
 def manage_warp():
     print("\n[*] Cloudflare WARP durumu kontrol ediliyor...")
     
@@ -123,9 +167,7 @@ def manage_warp():
         print("[-] Cloudflare WARP (warp-cli) bilgisayarında bulunamadı.")
         ans = input("[?] WARP'ı otomatik olarak indirmemi ve kurmamı ister misin? (E/H): ")
         if ans.lower() == 'e':
-            print("\n[*] Windows Paket Yöneticisi (winget) ile WARP kuruluyor. Lütfen bekle...")
-            os.system("winget install -e --id Cloudflare.Warp")
-            print("\n[+] Kurulum tamamlandı! Lütfen Cloudflare WARP uygulamasını açıp ilk ayarlarını yap, ardından scripti tekrar çalıştır.")
+            install_warp()
         else:
             print("[!] WARP kurulumu iptal edildi.")
 
